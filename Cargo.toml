@@ -1,0 +1,20 @@
+[package]
+name = "concourse-resource-notion-db"
+version = "0.1.0"
+edition = "2021"
+author = "Bernhard Schuster <bernhard@ahoi.io>"
+
+[dependencies]
+color-eyre = "0.6.2"
+concourse-resource = "0.3.0"
+fs-err = "2.11.0"
+notion = "0.5.1"
+reqwest = { version = "0.11.22", default-features = false, features = [
+  "rustls",
+  "tokio-rustls",
+  "serde_json",
+] }
+rustls = { version = "0.22.1", default-features = false }
+serde = { version = "1.0.193", features = ["derive"] }
+serde_json = "1.0.108"
+tokio = { version = "1.35.0", features = ["full"] }
