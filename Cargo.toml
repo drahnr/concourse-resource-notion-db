@@ -2,7 +2,7 @@
 name = "concourse-resource-notion-db"
 version = "0.1.0"
 edition = "2021"
-author = "Bernhard Schuster <bernhard@ahoi.io>"
+authors = ["Bernhard Schuster <bernhard@ahoi.io>"]
 
 [dependencies]
 color-eyre = "0.6.2"
