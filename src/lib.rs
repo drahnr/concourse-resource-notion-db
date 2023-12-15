@@ -132,6 +132,7 @@ async fn put(config: SourceConfig, inject: Vec<Properties>) -> Result<Version> {
                 database_id: db.id.clone(),
             },
             properties: extra,
+            children: None,
         };
         let page = notion.create_page(page_create_req).await?;
         version.last_edited_time = page.last_edited_time;
