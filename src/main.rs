@@ -1,7 +1,6 @@
-use color_eyre::eyre::{anyhow, bail, Result};
+use color_eyre::eyre::{bail, Result};
 use concourse_resource::*;
 use concourse_resource_notion_db::NotionResource;
-use std::path::PathBuf;
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -47,10 +46,10 @@ impl TryFrom<std::env::Args> for Args {
 
 impl Args {
     pub fn subcommand(&self) -> SubCommand {
-        self.subcommand.clone()
+        self.subcommand
     }
     pub fn path(&self) -> Option<&str> {
-        self.path.as_ref().clone().map(AsRef::as_ref)
+        self.path.as_ref().map(AsRef::as_ref)
     }
 }
 
@@ -86,7 +85,7 @@ fn run<R: Resource>() -> Result<()> {
                 input.source,
                 input.version,
                 input.params,
-                &args.path().expect("expected path as first parameter"),
+                args.path().expect("expected path as first parameter"),
             );
             match result {
                 Err(error) => {
@@ -109,7 +108,7 @@ fn run<R: Resource>() -> Result<()> {
             let result = <R as Resource>::resource_out(
                 input.source,
                 input.params,
-                &args.path().expect("expected path as first parameter"),
+                args.path().expect("expected path as first parameter"),
             );
             println!(
                 "{}",

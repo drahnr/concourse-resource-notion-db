@@ -41,13 +41,14 @@ async fn lookup_db(notion: &NotionApi, config: &SourceConfig) -> Result<Database
             property: FilterProperty::Object,
             value: FilterValue::Database,
         })
-        .await?;
+        .await
+        .wrap_err("Failed to search for msg")?;
     let mut dbs = Vec::from_iter(
         objects
             .only_databases()
             .results
             .into_iter()
-            .filter(|x| x.title_plain_text() == config.database),
+            .filter(|x| dbg!(x.title_plain_text()) == config.database),
     );
     let db = match dbs.len() {
         0 => bail!("Counldn't find that DB: {}", config.database),
