@@ -6,8 +6,8 @@ WORKDIR /src
 COPY . /src
 
 RUN cargo build --release
-RUN strip target/x86_64-unknown-linux-musl/release/examples/concourse-resource-notion-db
-RUN cp target/x86_64-unknown-linux-musl/release/examples/concourse-resource-notion-db main
+RUN strip target/x86_64-unknown-linux-musl/release/concourse-resource-notion-db
+RUN cp target/x86_64-unknown-linux-musl/release/concourse-resource-notion-db main
 
 # Step 2: retrieve SSL certificates
 FROM alpine as certs
