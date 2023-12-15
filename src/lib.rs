@@ -35,16 +35,20 @@ async fn notion_api_client(config: &SourceConfig) -> notion::NotionApi {
     notion::NotionApi::new(config.api_token.clone()).expect("Creating notion API client works. qed")
 }
 
+use std::str::FromStr;
+
 async fn lookup_db(notion: &NotionApi, config: &SourceConfig) -> Result<Database> {
+    let db_id = dbg!(DatabaseId::from_str(dbg!(&config.database)))
+        .wrap_err("Failed to convert database to ID")?;
+    let db = notion.get_database(db_id).await?;
+    return Ok(db);
+
     let objects = notion
-        .search(NotionSearch::Filter {
-            property: FilterProperty::Object,
-            value: FilterValue::Database,
-        })
+        .search(NotionSearch::Query(config.database.to_string()))
         .await
         .wrap_err("Failed to search for msg")?;
     let mut dbs = Vec::from_iter(
-        objects
+        dbg!(objects)
             .only_databases()
             .results
             .into_iter()
@@ -117,8 +121,6 @@ where
 async fn put(config: SourceConfig, inject: Vec<Properties>) -> Result<Version> {
     let notion = notion_api_client(&config).await;
     let db = lookup_db(&notion, &config).await?;
-
-    assert_eq!("1f0b1e3774d542ae89a95954b646616d", db.id.to_string());
 
     if inject.is_empty() {
         bail!("Nothing to update");
