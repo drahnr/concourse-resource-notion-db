@@ -104,7 +104,7 @@ fn run<R: Resource>() -> Result<()> {
         }
         SubCommand::Out => {
             let input: OutInput<<R as Resource>::Source, <R as Resource>::OutParams> =
-                serde_json::from_str(dbg!(&input_buffer)).expect("error deserializing input");
+                serde_json::from_str(&input_buffer).expect("error deserializing input");
             let result = <R as Resource>::resource_out(
                 input.source,
                 input.params,

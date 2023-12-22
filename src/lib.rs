@@ -144,6 +144,20 @@ async fn put(config: SourceConfig, inject: Vec<Properties>) -> Result<Version> {
     Ok(version)
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutParams {
+    /// The path that contains a json array of rows: `[{ {..}, {..}, {..},.. }]`.
+    pub path: std::path::PathBuf,
+}
+
+impl Default for OutParams {
+    fn default() -> Self {
+        Self {
+            path: std::path::PathBuf::from("out.json"),
+        }
+    }
+}
+
 fn run_this<T>(future: impl Future<Output = Result<T>>) -> Result<T> {
     let rt = tokio::runtime::Runtime::new()?;
     let output = rt.block_on(future)?;
@@ -158,7 +172,7 @@ impl Resource for NotionResource {
     type Source = SourceConfig;
     type InParams = concourse_resource::Empty;
     type InMetadata = concourse_resource::Empty;
-    type OutParams = concourse_resource::Empty;
+    type OutParams = OutParams;
     type OutMetadata = concourse_resource::Empty;
 
     fn resource_check(
@@ -188,13 +202,22 @@ impl Resource for NotionResource {
 
     fn resource_out(
         source: Option<Self::Source>,
-        _params: Option<Self::OutParams>,
+        params: Option<Self::OutParams>,
         input_path: &str,
     ) -> OutOutput<Self::Version, Self::OutMetadata> {
         let source = source.expect("Must provide `source:` values in resource configuration");
+        let params = params.unwrap_or_default();
+        let input_path = std::path::PathBuf::from(input_path);
+        let consume = input_path.join(params.path);
+        let consume = if !input_path.is_absolute() {
+            std::env::current_dir().unwrap().join(consume)
+        } else {
+            consume
+        };
+        println!("Loading data from {} for out step.", consume.display());
         let items = fs::OpenOptions::new()
             .read(true)
-            .open(std::env::current_dir().unwrap().join(input_path))
+            .open(consume)
             .expect("Yay, file, you there?");
         let items: Vec<Properties> =
             serde_json::from_reader(items).expect("Properties for shizzle");
