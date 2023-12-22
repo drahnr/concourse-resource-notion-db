@@ -30,6 +30,7 @@ resources:
     repository: europe-docker.pkg.dev/gensyn-main/registry/concourse-resource-notion-db
     username: _json_key_base64
     password: ((gcp_container_registry_pass))
+    tag: latest
 
 jobs:
 
