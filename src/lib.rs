@@ -196,7 +196,8 @@ impl Resource for NotionResource {
             .read(true)
             .open(std::env::current_dir().unwrap().join(input_path))
             .expect("Yay, file, you there?");
-        let items: Vec<Properties> = serde_json::from_reader(items).expect("Properties for shizzle");
+        let items: Vec<Properties> =
+            serde_json::from_reader(items).expect("Properties for shizzle");
         let new_version = run_this(put(source, items)).expect("Shall never fail. qed");
         OutOutput {
             version: new_version,
