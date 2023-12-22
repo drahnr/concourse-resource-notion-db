@@ -1,0 +1,162 @@
+resource_types:
+- name: pull-request
+  type: registry-image
+  source:
+    repository: teliaoss/github-pr-resource
+
+resources:
+# - name: buildkit-resource
+#   type: registry-image
+#   source:
+#     repository: vito/oci-build-task
+
+- name: git-clone-resource
+  type: git
+  icon: git
+  source:
+    branch: master
+    uri: https://github.com/drahnr/concourse-resource-notion-db.git
+
+- name: env-glibc
+  type: registry-image
+  icon: oci
+  source:
+    repository: quay.io/drahnr/rust-glibc-builder
+
+- name: containerized-resource
+  type: registry-image
+  icon: oci
+  source:
+    repository: europe-docker.pkg.dev/gensyn-main/registry/concourse-resource-notion-db
+    username: _json_key_base64
+    password: ((gcp_container_registry_pass))
+
+jobs:
+
+  ####################################################################################
+  #                                 M A S T E R
+  ####################################################################################
+  - name: master-validate
+    build_logs_to_retain: 10
+    public: false
+    serial: true
+    plan:
+    - in_parallel:
+      - get: env-glibc
+      
+      - get: git-repo
+        resource: git-clone-resource
+        trigger: true
+
+    - in_parallel:
+      - task: compile-master
+        timeout: 40m
+        image: env-glibc
+        config:
+          platform: linux
+          inputs:
+          - name: git-repo
+          caches:
+          - path: cargo
+          - path: target
+          run:
+            # user: root
+            path: sh
+            args:
+            - -exc
+            - |
+              export RUST_BACKTRACE=full
+              export CARGO_HOME="$(pwd)/../cargo"
+              export CARGO_TARGET_DIR="$(pwd)/../target"
+              export EXE="${CARGO_TARGET_DIR}/release/cargo-spellcheck"
+
+              sudo chown $(whoami): -Rf ${CARGO_HOME}
+              sudo chown $(whoami): -Rf ${CARGO_TARGET_DIR}
+              sudo chown $(whoami): -Rf .
+
+              cargo +stable build --release
+
+            dir: git-repo
+      - try:
+          task: unit-tests-master
+          timeout: 40m
+          image: env-glibc
+          config:
+            platform: linux
+            inputs:
+            - name: git-repo
+            caches:
+            - path: cargo
+            run:
+              # user: root
+              path: sh
+              args:
+              - -exc
+              - |
+                export RUST_BACKTRACE=1
+                export CARGO_HOME="$(pwd)/../cargo"
+                sudo chown $(whoami): -Rf ${CARGO_HOME} .
+                rustc +stable --version --verbose
+                cargo +stable t
+              dir: git-repo
+      - try:
+          task: validate-meta-master
+          timeout: 15m
+          image: env-glibc
+          config:
+            platform: linux
+            inputs:
+            - name: git-repo
+            caches:
+            - path: cargo
+            run:
+              # user: root
+              path: sh
+              args:
+              - -exc
+              - |
+                export CARGO_HOME="$(pwd)/../cargo"
+                sudo chown $(whoami): -Rf ${CARGO_HOME} .
+                rustc +stable --version --verbose
+
+                cargo +stable fmt -- --check
+
+              dir: git-repo
+
+
+
+  - name: create-container
+    build_logs_to_retain: 5
+    public: false
+    serial: true
+    plan:
+    - get: git-repo
+      resource: git-clone-resource
+      passed: [master-validate]
+      trigger: true
+
+    - task: build
+      privileged: true
+
+      config:
+        platform: linux
+
+        image_resource:
+          type: registry-image
+          source:
+            repository: concourse/oci-build-task
+        params:
+          DOCKERFILE: git-repo/Containerfile
+          CONTEXT: git-repo
+
+        inputs:
+        - name: git-repo
+
+        outputs:
+        - name: image
+
+        run:
+          path: build
+
+    - put: containerized-resource
+      params: {image: image/image.tar}
