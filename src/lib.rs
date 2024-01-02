@@ -38,8 +38,8 @@ async fn notion_api_client(config: &SourceConfig) -> notion::NotionApi {
 use std::str::FromStr;
 
 async fn lookup_db(notion: &NotionApi, config: &SourceConfig) -> Result<Database> {
-    let db_id = dbg!(DatabaseId::from_str(dbg!(&config.database)))
-        .wrap_err("Failed to convert database to ID")?;
+    let db_id =
+        DatabaseId::from_str(&config.database).wrap_err("Failed to convert database to ID")?;
     let db = notion.get_database(db_id).await?;
     return Ok(db);
 
@@ -48,11 +48,11 @@ async fn lookup_db(notion: &NotionApi, config: &SourceConfig) -> Result<Database
         .await
         .wrap_err("Failed to search for msg")?;
     let mut dbs = Vec::from_iter(
-        dbg!(objects)
+        objects
             .only_databases()
             .results
             .into_iter()
-            .filter(|x| dbg!(x.title_plain_text()) == config.database),
+            .filter(|x| x.title_plain_text() == config.database),
     );
     let db = match dbs.len() {
         0 => bail!("Counldn't find that DB: {}", config.database),
@@ -214,13 +214,13 @@ impl Resource for NotionResource {
         } else {
             consume
         };
-        println!("Loading data from {} for out step.", consume.display());
+        eprintln!("Loading data from {} for out step.", consume.display());
         let items = fs::OpenOptions::new()
             .read(true)
             .open(consume)
-            .expect("Yay, file, you there?");
-        let items: Vec<Properties> =
-            serde_json::from_reader(items).expect("Properties for shizzle");
+            .expect("Huh? File? You there?");
+        let items: Vec<Properties> = serde_json::from_reader(items)
+            .expect("User provided get/put properties invalid/unknown");
         let new_version = run_this(put(source, items)).expect("Shall never fail. qed");
         OutOutput {
             version: new_version,
