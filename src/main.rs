@@ -119,7 +119,6 @@ fn run<R: Resource>() -> Result<()> {
                 .expect("error serializing output")
             );
         }
-        v => eprintln!("unexpected being called as '{v:?}'"),
     }
     Ok(())
 }
