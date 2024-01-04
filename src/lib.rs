@@ -98,15 +98,34 @@ where
     }
 }
 
+#[allow(dead_code)]
+async fn wild_no_payload(api_token: &str, method: Method, path: &str) -> Result<()> {
+    let client = reqwest::Client::new();
+    let req = client
+        .request(
+            method,
+            Url::parse(&("https://api.notion.com".to_owned() + path)).unwrap(),
+        )
+        .bearer_auth(api_token)
+        .header("Notion-Version", "2022-06-28")
+        .build()?;
+
+    eprintln!("req: {:?}", &req);
+    let resp = client.execute(req).await?;
+    if resp.status().as_u16() != 200 {
+        bail!(
+            "Failed submission with response code {}",
+            resp.status().as_u16()
+        );
+    } else {
+        Ok(())
+    }
+}
+
 async fn page_delete(api_key: &str, page: &Page) -> Result<()> {
     let block_id = BlockId::from(page.id.clone());
-    wild(
-        api_key,
-        Method::DELETE,
-        &format!("v1/blocks/{block_id}"),
-        (),
-    )
-    .await?;
+    eprintln!("Attempting to delete page {block_id}");
+    wild_no_payload(api_key, Method::DELETE, &format!("/v1/blocks/{block_id}")).await?;
     Ok(())
 }
 
@@ -125,14 +144,16 @@ async fn put(config: SourceConfig, updates: Vec<Properties>, mode: Mode) -> Resu
         let pages = notion
             .query_database(db.as_id(), DatabaseQuery::default())
             .await?;
+        eprintln!("Pages: {pages:?}");
         for page in pages.results() {
             page_delete(&config.api_token, page).await?;
         }
     }
-    for update in updates {
+    let n = updates.len();
+    for (idx, update) in updates.into_iter().enumerate() {
+        eprintln!("Applying update: {idx}/{n}");
         match &mode {
-            Mode::Replace => {}
-            Mode::Append => {}
+            Mode::Append | Mode::Replace => {}
             Mode::Update {
                 ref primary_id_property,
             } => {
