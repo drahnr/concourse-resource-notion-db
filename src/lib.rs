@@ -110,7 +110,6 @@ async fn wild_no_payload(api_token: &str, method: Method, path: &str) -> Result<
         .header("Notion-Version", "2022-06-28")
         .build()?;
 
-    eprintln!("req: {:?}", &req);
     let resp = client.execute(req).await?;
     if resp.status().as_u16() != 200 {
         bail!(
@@ -129,6 +128,14 @@ async fn page_delete(api_key: &str, page: &Page) -> Result<()> {
     Ok(())
 }
 
+fn db_version(db: &Database) -> Version {
+    let version = Version {
+        id: db.id.clone(),
+        last_edited_time: db.last_edited_time,
+    };
+    version
+}
+
 async fn put(config: SourceConfig, updates: Vec<Properties>, mode: Mode) -> Result<Version> {
     let notion = notion_api_client(&config).await;
     let db = lookup_db(&notion, &config).await?;
@@ -136,22 +143,18 @@ async fn put(config: SourceConfig, updates: Vec<Properties>, mode: Mode) -> Resu
     if updates.is_empty() {
         bail!("Nothing to update");
     }
-    let mut version = Version {
-        id: db.id.clone(),
-        last_edited_time: db.last_edited_time,
-    };
+    // let mut version = db_version(&db);
     if let Mode::Replace = &mode {
         let pages = notion
             .query_database(db.as_id(), DatabaseQuery::default())
             .await?;
-        eprintln!("Pages: {pages:?}");
         for page in pages.results() {
             page_delete(&config.api_token, page).await?;
         }
     }
     let n = updates.len();
     for (idx, update) in updates.into_iter().enumerate() {
-        eprintln!("Applying update: {idx}/{n}");
+        eprintln!("Applying update: {idx}/{n}", idx = idx + 1);
         match &mode {
             Mode::Append | Mode::Replace => {}
             Mode::Update {
@@ -194,10 +197,13 @@ async fn put(config: SourceConfig, updates: Vec<Properties>, mode: Mode) -> Resu
             properties: update,
             children: None,
         };
-        let page = notion.create_page(page_create_req).await?;
-        version.last_edited_time = page.last_edited_time;
+        let _page = notion.create_page(page_create_req).await?;
+        // version.last_edited_time = page.last_edited_time;
     }
 
+    // fetch the version
+    let db = lookup_db(&notion, &config).await?;
+    let version = db_version(&db);
     Ok(version)
 }
 
